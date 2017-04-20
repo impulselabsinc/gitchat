@@ -47,7 +47,13 @@ from watchdog.events import FileSystemEventHandler
 from Queue import Queue
 from PIL import Image, ImageTk
 
+
 class CustomHandler(FileSystemEventHandler):
+    # We only care about create and update events
+    # This also means that if you use the same file
+    # to send messages that everything will be repeated
+    # unless uyou first delete the previous messages
+    
     def __init__(self, app):
         FileSystemEventHandler.__init__(self)
         self.app = app
@@ -84,27 +90,55 @@ class CustomHandler(FileSystemEventHandler):
 
 class App(object):
     def __init__(self):
+        
+        # Set up the fie watcher and path
+        # you can also pass it a path from
+        # the command line
         path = sys.argv[1] if len(sys.argv) > 1 else "./messages"
         handler = CustomHandler(self)
         self.observer = Observer()
         self.observer.schedule(handler, path, recursive=False)
+
+        # Initialize line numbers so we know where to apply color tags
         self.lineNumber = 0
-        self.previousLine = ""
+
+        # Limited de-duplication by keeping track of last change loaded
         self.previousFile = []
 
+        # Initialize the queue that goes between the filewatcher and the GUI
         self.queue = Queue()
+
+        # Initialize GUI root object
         self.root = tk.Tk()
 
+        # Build the GUI
         self.initMenu()
         self.initUi(path)
         self.initImages()
+
+        # Start watching files
         self.observer.start()
 
     def initUi(self, path):
+
+        # Create and position horizontal and vertical scroll bars
+        self.xscrollbar = tk.Scrollbar(self.root, orient=tk.HORIZONTAL)
+        self.xscrollbar.pack(side=tk.BOTTOM, fill=tk.X)
+        self.yscrollbar = tk.Scrollbar(self.root)
+        self.yscrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        # Create text widget for the chat
+        self.text = tk.Text(self.root,wrap=tk.NONE,
+                            xscrollcommand=self.xscrollbar.set,
+                            yscrollcommand=self.yscrollbar.set)
+
+        # Increase the font size for the text widget
         myFont = Font(family="Helvetica", size=14)
-        
-        self.text = tk.Text(self.root)
         self.text.configure(font=myFont)
+
+        # Set up loads of colored tags so the kids can have some fun
+        # Red and black are restricted tags used for system messages
+        # Secret will hide the text unless a resourceful soul figures out how to hack it
         self.text.tag_config("secret", background="white", foreground="white")
         self.text.tag_config("white", background="white", foreground="black")
         self.text.tag_config("black", background="black", foreground="white")
@@ -119,7 +153,6 @@ class App(object):
         self.text.tag_config("aquamarine", background="aquamarine", foreground="black")
         self.text.tag_config("purple", background="purple", foreground="cyan")
         self.text.tag_config("honeydew", background="honeydew", foreground="brown")
-
         self.text.tag_config("rainbow_violet", background="#9400D3", foreground="white")
         self.text.tag_config("rainbow_indigo", background="#4B0082", foreground="pink")
         self.text.tag_config("rainbow_blue", background="#0000FF", foreground="yellow")
@@ -128,78 +161,162 @@ class App(object):
         self.text.tag_config("rainbow_orange", background="#FF7F00", foreground="white")
         self.text.tag_config("rainbow_red", background="#FF0000", foreground="yellow")
 
-        self.shrug = """¯\_(ツ)_/¯"""
-        self.smile = """【ツ】"""
-        
-        self.text.pack(fill="both", expand=True)
+        # Somewhat unnecessary dictionary so we can test for tags more easily
+        # Any new color tags need to be added here
+        self.allowed_tag_colors = {}
+        self.allowed_tag_colors['white'] = 'white'
+        self.allowed_tag_colors['yellow'] = 'yellow'
+        self.allowed_tag_colors['green'] = 'green'
+        self.allowed_tag_colors['blue'] = 'blue'
+        self.allowed_tag_colors['orange'] = 'orange'
+        self.allowed_tag_colors['pink'] = 'pink'
+        self.allowed_tag_colors['cyan'] = 'cyan'
+        self.allowed_tag_colors['brown'] = 'brown'
+        self.allowed_tag_colors['aquamarine'] = 'aquamarine'
+        self.allowed_tag_colors['purple'] = 'purple'
+        self.allowed_tag_colors['honeydew'] = 'honeydew'
+        self.allowed_tag_colors['rainbow_violet'] = 'rainbow_violet'
+        self.allowed_tag_colors['rainbow_indigo'] = 'rainbow_indigo'
+        self.allowed_tag_colors['rainbow_blue'] = 'rainbow_blue'
+        self.allowed_tag_colors['rainbow_green'] = 'rainbow_green'
+        self.allowed_tag_colors['rainbow_yellow'] = 'rainbow_yellow'
+        self.allowed_tag_colors['rainbow_orange'] = 'rainbow_orange'
+        self.allowed_tag_colors['rainbow_red'] = 'rainbow_red'
 
+        # Position text widget and add scrolling
+        self.text.pack(fill="both", expand=True)
+        self.xscrollbar.config(command=self.text.xview)
+        self.yscrollbar.config(command=self.text.yview)
+
+        # Welcome message for Gitchat
         self.welcomeMsg = " " * 50 + "Welcome to Gitchat" + " " * 50
         self.lineNumber = self.lineNumber + 1
         self.text.insert(tk.INSERT, self.welcomeMsg + "\n")
         self.text.tag_add("red", str(self.lineNumber) + ".0", str(self.lineNumber) + "." + str(len(self.welcomeMsg)))
 
+        # Watched directory is displayed in GUI
         self.lineNumber = self.lineNumber + 1
         self.text.insert("end", "Watching %s...\n" % path)
+
+        # Text widget is disabled so users cannot type into it and mess up the numbering for tags
         self.text.config(state=tk.DISABLED)
 
+        # Have the GUI listen for shutdown events
         self.root.bind("<Destroy>", self.shutdown)
+
+        # Subscribe the GUI to file watcher events
         self.root.bind("<<WatchdogEvent>>", self.handle_watchdog_event)
 
     def initImages(self):
-        self.images = {}
-        
+
+        # Dictionary for image emojis
+        self.emojicons = {}
+
+        # Set the base size to 32 pixels
+        # Calculate and proportionately
+        # reduce image size
+
+        # creeper emoji
         basewidth = 32
         buf = Image.open('./emojis/creeper.gif')
         wpercent = (basewidth/float(buf.size[0]))
         hsize = int((float(buf.size[1])*float(wpercent)))
         buf = buf.resize((basewidth,hsize), Image.ANTIALIAS)
-        self.images['creeper'] = ImageTk.PhotoImage(buf)
+        self.emojicons['creeper'] = ImageTk.PhotoImage(buf)
 
+        # poo emoji
         basewidth = 32
         buf = Image.open('./emojis/poo.gif')
         wpercent = (basewidth/float(buf.size[0]))
         hsize = int((float(buf.size[1])*float(wpercent)))
         buf = buf.resize((basewidth,hsize), Image.ANTIALIAS)
-        self.images['poo'] = ImageTk.PhotoImage(buf)
+        self.emojicons['poo'] = ImageTk.PhotoImage(buf)
 
+        # happy emoji
         basewidth = 32
         buf = Image.open('./emojis/happy.gif')
         wpercent = (basewidth/float(buf.size[0]))
         hsize = int((float(buf.size[1])*float(wpercent)))
         buf = buf.resize((basewidth,hsize), Image.ANTIALIAS)
-        self.images['happy'] = ImageTk.PhotoImage(buf)
+        self.emojicons['happy'] = ImageTk.PhotoImage(buf)
+
+
+        # Dictionary for text emojis
+        self.textemoji = {}
+
+        # shrug emoji
+        self.textemoji['shrug'] = """¯\_(ツ)_/¯"""
+
+        # smile emoji
+        self.textemoji['smile'] = """【ツ】"""
 
         
     def initMenu(self):
-        self.root.title("Gitchat-py")
-        
+        # Create the Menu items for the app
+
+        # Set window title
+        self.root.title("Gitchat")    
+
+        # Create menu root
         menubar = tk.Menu(self.root)
         self.root.config(menu=menubar)
-        
+
+        # File menu
         fileMenu = tk.Menu(menubar)
         menubar.add_cascade(label="File", menu=fileMenu)
-        fileMenu.add_command(label="Exit", command=self.onExit)
-        
 
+        # File -> Exit menu item
+        fileMenu.add_command(label="Exit", command=self.onExit) 
+        
+        # Help menu
         helpmenu = tk.Menu(menubar)
         menubar.add_cascade(label="Help", menu=helpmenu)
+
+        # Help -> I want to send a message menu item
         helpmenu.add_command(label="I want to send a message", command=self.help_send)
+
+        # Help -> I want to receive a message menu item
         helpmenu.add_command(label="I want to receive a message", command=self.help_receive)
-        helpmenu.add_command(label="About...", command=self.About)
+
+        # Help -> About menu item
+        helpmenu.add_command(label="About...", command=self.About)                              
+
         
     def handle_watchdog_event(self, event):
-        """Called when watchdog posts an event"""
+        # The heavy-lifting for the app
+        # All events are handled here
+
+        # Pick up watchdog events from the queue
         watchdog_event = self.queue.get()
-        
-        self.text.config(state=tk.NORMAL)
+
+        # Open the file that generated the event
         with open(watchdog_event.src_path) as f:
+            
+            # Read the entire file - probably
             lines = f.readlines()
+
+            # Close the file after reaing it
             f.close()
+
+            # Make the text widget writable again
+            # Should really move this further down
             self.text.config(state=tk.NORMAL)
+
+            # Simple deduping test to account for
+            # new files generating both a create
+            # event and an update event
             if self.previousFile == lines:
                 return None
             else:
+
+                # Store the current file for the next compare
                 self.previousFile = lines
+
+                # Process each line
+                # First we tokenize on the colon (:)
+                # We try to make an educated guess if we don't get back 3 parts
+                # Missing names get 'poopsie lala' as a substitute
+                # Missing tags get 'white' as a substitute
                 for line in lines:
                     parts = line.split(":")
                     if len(parts) == 3:
@@ -219,6 +336,7 @@ class App(object):
                         myMsg = line.strip()
                         myTag = "white"
 
+                    # Array to cycle through for the 'rainbow' tag below
                     rainbowColors = []
                     rainbowColors.append("rainbow_violet")
                     rainbowColors.append("rainbow_indigo")
@@ -228,12 +346,13 @@ class App(object):
                     rainbowColors.append("rainbow_orange")
                     rainbowColors.append("rainbow_red")
                     
-                    
-                    if myTag == "white" or myTag == "yellow" or myTag == "green" or myTag == "blue" or myTag == "orange" or myTag == "pink" or myTag == "cyan" or myTag == "brown" or myTag == "aquamarine" or myTag == "purple" or myTag == "honeydew":
+                    # Most tags will  highlight just the name in the desired color
+                    if myTag in self.allowed_tag_colors:
                         self.lineNumber = self.lineNumber + 1
                         self.text.insert("end", myName + " > " + myMsg + "\n")
                         self.text.tag_add(myTag, str(self.lineNumber) + ".0", str(self.lineNumber) + "." + str(len(myName)))
-                                           
+
+                    # Rainbow tags will color each character in the message a different color                                          
                     elif myTag == "rainbow":
                         self.lineNumber = self.lineNumber + 1
                         self.text.insert("end", myName + " > " + myMsg + "\n")
@@ -244,6 +363,8 @@ class App(object):
                             mycolor = rainbowColors[idx]
                             idx = (idx + 1) % len(rainbowColors)                               
                             self.text.tag_add(mycolor, str(self.lineNumber) + "." + str(character), str(self.lineNumber) + "." + str(character + 7))
+
+                    # Secret will hide the contents of a message until a resourceful hacker can figure out how to hack it
                     elif myTag == "secret":
                         self.lineNumber = self.lineNumber + 1
                         self.text.insert("end", myName + " > " + myMsg + " <---***Secret Message***" + "\n")
@@ -251,68 +372,65 @@ class App(object):
                         self.text.tag_add("white", str(self.lineNumber) + ".0", str(self.lineNumber) + "." + str(nameLen))
                         self.text.tag_add("secret", str(self.lineNumber) + "." + str(nameLen + 3), str(self.lineNumber) + "." + str(len(myMsg) + nameLen + 3))
                         self.text.tag_add("red", str(self.lineNumber) + "." + str(len(myMsg) + nameLen + 3 + 1), str(self.lineNumber) + "." + str(len(myMsg) + nameLen + 3 + 24))
+
+                    # Papaya has a 2-tone (orange/yellow) color combo for the name and the message
                     elif myTag == "papaya":
                         self.lineNumber = self.lineNumber + 1
                         self.text.insert("end", myName + " > " + myMsg + "\n")
                         nameLen = len(myName)
                         self.text.tag_add("orange", str(self.lineNumber) + ".0", str(self.lineNumber) + "." + str(nameLen))
                         self.text.tag_add("yellow", str(self.lineNumber) + "." + str(nameLen + 3), str(self.lineNumber) + "." + str(len(myMsg) + nameLen + 3))
+
+                    # Pastel has a 2-tone (pink/aquamarine) color combo for the name and the message
                     elif myTag == "pastel":
                         self.lineNumber = self.lineNumber + 1
                         self.text.insert("end", myName + " > " + myMsg + "\n")
                         nameLen = len(myName)
                         self.text.tag_add("pink", str(self.lineNumber) + ".0", str(self.lineNumber) + "." + str(nameLen))
                         self.text.tag_add("aquamarine", str(self.lineNumber) + "." + str(nameLen + 3), str(self.lineNumber) + "." + str(len(myMsg) + nameLen + 3))
-                    elif myTag == "shrug":
+
+                    # Text emojis do not get color tags and the message payload is ignored. Just the emoji is displayed
+                    elif myTag in self.textemoji:
                         self.lineNumber = self.lineNumber + 3
-                        self.text.insert("end", "\n" + myName + " > " + self.shrug + "\n\n")
-                    elif myTag == "smile":
-                        self.lineNumber = self.lineNumber + 3
-                        self.text.insert("end", "\n" + myName + " > " + self.smile + "\n\n")
-                    elif myTag == "creeper":
-                        self.lineNumber = self.lineNumber + 3
-                        self.text.insert("end", "\n" + myName + " > ")
-                        self.text.image_create(tk.END,image=self.images['creeper'])
-                        self.text.insert("end", "\n\n")
-                    elif myTag == "happy":
+                        self.text.insert("end", "\n" + myName + " > " + self.textemoji[myTag] + "\n\n")
+
+                    # Picture emojis do not get color tags and the message payload is ignored. Just the emoji is displayed
+                    elif myTag in self.emojicons:
                         self.lineNumber = self.lineNumber + 3
                         self.text.insert("end", "\n" + myName + " > ")
-                        self.text.image_create(tk.END,image=self.images['happy'])
+                        self.text.image_create(tk.END,image=self.emojicons[myTag])
                         self.text.insert("end", "\n\n")
-                    elif myTag == "poo":
-                        self.lineNumber = self.lineNumber + 3
-                        self.text.insert("end", "\n" + myName + " > ")
-                        self.text.image_create(tk.END,image=self.images['poo'])
-                        self.text.insert("end", "\n\n")
+
+                    # Everything else is best-effort
                     else:
                         self.lineNumber = self.lineNumber + 1
                         self.text.insert("end", myName + " > " + myMsg + "\n")
                         self.text.tag_add("white", str(self.lineNumber) + ".0", str(self.lineNumber) + "." + str(len(myName)))
-
+                    self.text.see(tk.END)
+                    
         self.text.config(state=tk.DISABLED)
-                            
 
 
     def shutdown(self, event):
-        """Perform safe shutdown when GUI has been destroyed"""
+        # Shuts down filewatcher 
         self.observer.stop()
-        self.observer.join()
 
     def mainloop(self):
-        """Start the GUI loop"""
+        # Start the GUI loop
         self.root.mainloop()
 
     def notify(self, event):
-        """Forward events from watchdog to GUI"""
+        # Used by the file watcher to put events on the queue and to notify the GUI
         self.queue.put(event)
         self.root.event_generate("<<WatchdogEvent>>", when="tail")
 
     def onExit(self):
+        # Clean exit
         self.observer.stop()
-        self.observer.join()
         self.root.destroy()
 
     def About(self):
+        # Help menu item about the app
         about_message = "\nGitchat v0.1\n\n"
         about_message = about_message + "Gitchat was designed to help children learn to use Github\n\n"
         about_message = about_message + "https://github.com/impulselabsinc\n"
@@ -326,6 +444,7 @@ class App(object):
         self.button.pack()
 
     def help_send(self):
+        # Help menu item to help send messages
         send_message = "\n"
         send_message = send_message + "1.  Launch Python 2 (Raspberry Pi menu -> Programming -> Python 2)\n"
         send_message = send_message + "2.  Create a new file (File -> New)\n"
@@ -359,6 +478,7 @@ class App(object):
         self.button.pack()
         
     def help_receive(self):
+        # Help menu item to help receive messages
         print "nothing to see here"
         receive_message = "\n"
         receive_message = receive_message + "1.  Open a terminal window and type in the following commands\n"
@@ -367,7 +487,6 @@ class App(object):
         receive_message = receive_message + "     cd gitchat\n"
         receive_message = receive_message + "     cd messages\n"
         receive_message = receive_message + "     git pull\n"
- 
 
         self.top = tk.Toplevel()
         self.top.geometry("600x200")
@@ -377,5 +496,6 @@ class App(object):
         self.button = tk.Button(self.top, text="Go away, silly message!", command=self.top.destroy)
         self.button.pack()
 
+# App main
 app = App()
 app.mainloop()
