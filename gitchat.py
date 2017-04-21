@@ -96,7 +96,7 @@ class App(object):
         # Set up the fie watcher and path
         # you can also pass it a path from
         # the command line
-        self.path = sys.argv[1] if len(sys.argv) > 1 else "./gitchat-messages"
+        self.path = sys.argv[1] if len(sys.argv) > 1 else "../gitchat-messages"
         handler = CustomHandler(self)
         self.observer = Observer()
         self.observer.schedule(handler, self.path, recursive=False)
