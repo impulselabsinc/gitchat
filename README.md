@@ -35,4 +35,10 @@ Only the following emotions are supported for now -
 ```
 # Requires watchdog
 sudo pip install watchdog
+
+# Requires netifaces
+pip install netifaces
+
+# Requires python-imaging and python-imaging-tk
+sudo apt-get install python-imaging python-imaging-tk -y
 ```
