@@ -1,5 +1,16 @@
 # Gitchat
-## Small chat app to teach children how to use git
+## Hackable chat app to teach children how to use git and program Minecraft
+
+This app allows students to send messages to each other via git push and git pull.
+
+This app has two tabs called 'chat' and 'minecraft'. Students can change the behaviour of both tabs through code in a variety of ways - 
+- change the layout
+- add tags that allow the text to be formatted differently 
+- add their own emojis
+- add minecraft controls
+- change the layout of the GUI
+
+This app is written in Python and uses Tkinter to build the GUI. 
 
 Watches for new and modified files under the 'messages' subdirectory
 Any new or modified contents are published to the GUI. This is where
