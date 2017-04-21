@@ -5,9 +5,10 @@ from tkFont import Font
 from collections import namedtuple
 import mcpi.minecraft as minecraft 
 import mcpi.block as block
+from sys import platform
+import netifaces as ni
 try:
-    from netifaces import AF_INET, AF_INET6, AF_LINK, AF_PACKET, AF_BRIDGE
-    import netifaces as ni
+    from netifaces import AF_INET, AF_INET6, AF_LINK
 except Exception, e:
     pass
 
@@ -17,37 +18,48 @@ class MinecraftFrame(ttk.Frame):
         mcFrame.pack()
 
         localIpAddr = 'unknown'
-        try:
-            localIpAddr = ni.ifaddresses('wlan0')[AF_INET][0]['addr']
-        except Exception, e:
-            pass
+        if platform == "linux" or platform == "linux2":
+            # linux
+            try:
+                localIpAddr = ni.ifaddresses('wlan0')[AF_INET][0]['addr']
+            except Exception, e:
+                pass
+        elif platform == "darwin":
+            # OS X
+            try:
+                localIpAddr = ni.ifaddresses('en0')[AF_INET][0]['addr']
+            except Exception, e:
+                pass
+        elif platform == "win32":
+            # Windows...
+            localIpAddr = 'win32.unknown'
 
         # Add the frame to the notebook
         parent.add(mcFrame, text="Minecraft")
 
         #Status bar
         lblStatus = tk.Label(mcFrame, text="Status: ")
-        lblStatus.grid(row = 0, column = 1, padx = 5, pady = 5)
+        lblStatus.grid(row = 0, column = 1, padx = 5, pady = 5, sticky=tk.E)
         self.statusbar = StatusBar(mcFrame)
-        self.statusbar.grid(row = 0, column = 2)
+        self.statusbar.grid(row = 0, column = 2, sticky=tk.W)
         self.statusbar.set('%s', 'Ready')
 
         # Labels
         # To IP address
         lblIpAddress = tk.Label(mcFrame, text="To IP Address: ")
-        lblIpAddress.grid(row = 1, column = 1, padx = 5, pady = 5)
+        lblIpAddress.grid(row = 1, column = 1, padx = 5, pady = 5, sticky=tk.E)
 
         # Sender name
         lblSender = tk.Label(mcFrame, text="Your Name: ")
-        lblSender.grid(row = 2, column = 1, padx = 5, pady = 5)
+        lblSender.grid(row = 2, column = 1, padx = 5, pady = 5, sticky=tk.E)
 
         # Sender name
         lblMsg = tk.Label(mcFrame, text="Your Message: ")
-        lblMsg.grid(row = 3, column = 1, padx = 5, pady = 5)
+        lblMsg.grid(row = 3, column = 1, padx = 5, pady = 5, sticky=tk.E)
 
         # Local IP address
         lblYourIp = tk.Label(mcFrame, text="Your IP Address: ")
-        lblYourIp.grid(row = 4, column = 1, padx = 5, pady = 5)
+        lblYourIp.grid(row = 4, column = 1, padx = 5, pady = 5, sticky=tk.E)
         
 
         # Text fields
@@ -79,7 +91,7 @@ class MinecraftFrame(ttk.Frame):
         self.varYourIp = tk.StringVar()
         fldYourIp = tk.Label(mcFrame, textvariable=self.varYourIp)
         self.varYourIp.set(localIpAddr)
-        fldYourIp.grid(row = 4, column = 2)
+        fldYourIp.grid(row = 4, column = 2, sticky=tk.W)
 
 
         # Buttons
