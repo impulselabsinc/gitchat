@@ -5,23 +5,36 @@ from tkFont import Font
 from collections import namedtuple
 import mcpi.minecraft as minecraft 
 import mcpi.block as block
+try:
+    from netifaces import AF_INET, AF_INET6, AF_LINK, AF_PACKET, AF_BRIDGE
+    import netifaces as ni
+except Exception, e:
+    pass
 
 class MinecraftFrame(ttk.Frame):
     def __init__(self, parent):
         mcFrame = ttk.Frame(parent, width=200, height=100,)
         mcFrame.pack()
 
+        localIpAddr = 'Only works on Linux'
+        try:
+            localIpAddr = ni.ifaddresses('wlan0')[AF_INET][0]['addr']
+        except Exception, e:
+            pass
+
         # Add the frame to the notebook
         parent.add(mcFrame, text="Minecraft")
 
         #Status bar
+        lblStatus = tk.Label(mcFrame, text="Status: ")
+        lblStatus.grid(row = 0, column = 1, padx = 5, pady = 5)
         self.statusbar = StatusBar(mcFrame)
-        self.statusbar.grid(row = 1, column = 4, padx = 5, pady = 5)
+        self.statusbar.grid(row = 0, column = 2)
         self.statusbar.set('%s', 'Ready')
 
         # Labels
-        # IP address
-        lblIpAddress = tk.Label(mcFrame, text="IP Address: ")
+        # To IP address
+        lblIpAddress = tk.Label(mcFrame, text="To IP Address: ")
         lblIpAddress.grid(row = 1, column = 1, padx = 5, pady = 5)
 
         # Sender name
@@ -31,6 +44,10 @@ class MinecraftFrame(ttk.Frame):
         # Sender name
         lblMsg = tk.Label(mcFrame, text="Your Message: ")
         lblMsg.grid(row = 3, column = 1, padx = 5, pady = 5)
+
+        # Local IP address
+        lblYourIp = tk.Label(mcFrame, text="Your IP Address: ")
+        lblYourIp.grid(row = 4, column = 1, padx = 5, pady = 5)
         
 
         # Text fields
@@ -58,6 +75,12 @@ class MinecraftFrame(ttk.Frame):
         fldMsg.insert(tk.END, 'Hi')
         fldMsg.grid(row = 3, column = 2)
 
+        # Local IP Address
+        self.varYourIp = tk.StringVar()
+        fldYourIp = tk.Label(mcFrame, textvariable=self.varYourIp)
+        self.varYourIp.set(localIpAddr)
+        fldYourIp.grid(row = 4, column = 2)
+
 
         # Buttons
         # Chat button
@@ -69,6 +92,7 @@ class MinecraftFrame(ttk.Frame):
         try:
             mc = minecraft.Minecraft.create(self.varIpAddr.get())
             mc.postToChat(self.varSender.get() + ' > ' + self.varMsg.get())
+            self.statusbar.set('%s', 'Sent')
         except Exception, e:
             print e
             self.statusbar.set('%s', e)
