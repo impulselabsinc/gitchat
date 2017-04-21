@@ -51,6 +51,7 @@ sudo pip install watchdog netifaces
 # Requires python-imaging and python-imaging-tk
 sudo apt-get install python-imaging python-imaging-tk -y
 ```
+- The lib directory also has a soft link to mcpi. If you do not use Linux or MacOS, you will need to download mcpi to /lib
 
 ### Git commands
 - You should create your branch before you start working or your changes may be lost
