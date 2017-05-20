@@ -12,7 +12,7 @@ This app has two tabs called 'chat' and 'minecraft'. Students can change the beh
 
 This app is written in Python and uses Tkinter to build the GUI. 
 
-Watches for new and modified files under the 'messages' subdirectory
+Watches for new and modified files in the '../gitchat-messages' directory(one level up)
 Any new or modified contents are published to the GUI. This is where
 you add or update messages.
 
@@ -40,13 +40,34 @@ Only the following emotions are supported for now -
 - shrug
 - smile
 
+To pull new messages and to add messages use the following git commands
+```
+# pulls latest changes from Github. Always pull before you do anything else so you are working with the latest changes
+git pull
+
+# shows you which files have been modified or need to be added to Github
+git status
+
+# add a file that you want to save on Github
+git add filename.txt
+
+# finalize the change - the comment is required
+git commit -m "May the source be with you"
+
+# send the files to Github
+git push
+
+```
+
+If someone else made changes before you pushed your changes to Github, you may see a terminal editor window open asking you for a merge comment - you can either type 'Ctrl + X' or ':wq' to exit out of the screen and try pushing your changes again
+
 ![Image of Gitchat](https://impulselabsinc.github.io/img/gitchat.png)
 
 ![Image of Gitchat Minecraft](https://impulselabsinc.github.io/img/gitchatmc.png)
 
 ```
-# Requires watchdog and netifaces
-sudo pip install watchdog netifaces
+# Requires pillow, watchdog and netifaces
+sudo pip install watchdog netifaces pillow
 
 # Requires python-imaging and python-imaging-tk
 sudo apt-get install python-imaging python-imaging-tk -y
