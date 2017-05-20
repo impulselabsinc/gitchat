@@ -14,6 +14,8 @@ except Exception, e:
 
 class MinecraftFrame(ttk.Frame):
     def __init__(self, parent):
+
+        
         mcFrame = ttk.Frame(parent, width=200, height=100,)
         mcFrame.pack()
 
@@ -38,7 +40,7 @@ class MinecraftFrame(ttk.Frame):
         parent.add(mcFrame, text="Minecraft")
 
         #Status bar
-        lblStatus = tk.Label(mcFrame, text="Status: ")
+        lblStatus = tk.Label(mcFrame, bg='gray90', text="Status: ")
         lblStatus.grid(row = 0, column = 1, padx = 5, pady = 5, sticky=tk.E)
         self.statusbar = StatusBar(mcFrame)
         self.statusbar.grid(row = 0, column = 2, sticky=tk.W)
@@ -46,20 +48,24 @@ class MinecraftFrame(ttk.Frame):
 
         # Labels
         # To IP address
-        lblIpAddress = tk.Label(mcFrame, text="To IP Address: ")
+        lblIpAddress = tk.Label(mcFrame, bg='gray90', text="To IP Address: ")
         lblIpAddress.grid(row = 1, column = 1, padx = 5, pady = 5, sticky=tk.E)
 
         # Sender name
-        lblSender = tk.Label(mcFrame, text="Your Name: ")
+        lblSender = tk.Label(mcFrame, bg='gray90', text="Your Name: ")
         lblSender.grid(row = 2, column = 1, padx = 5, pady = 5, sticky=tk.E)
 
-        # Sender name
-        lblMsg = tk.Label(mcFrame, text="Your Message: ")
+        # Chat message
+        lblMsg = tk.Label(mcFrame, bg='gray90', text="Your Message: ")
         lblMsg.grid(row = 3, column = 1, padx = 5, pady = 5, sticky=tk.E)
 
+        # Player position
+        lblPlayerPos = tk.Label(mcFrame, bg='gray90', text="Player Position: ")
+        lblPlayerPos.grid(row = 4, column = 1, padx = 5, pady = 5, sticky=tk.E)
+
         # Local IP address
-        lblYourIp = tk.Label(mcFrame, text="Your IP Address: ")
-        lblYourIp.grid(row = 4, column = 1, padx = 5, pady = 5, sticky=tk.E)
+        lblYourIp = tk.Label(mcFrame, bg='gray90', text="Your IP Address: ")
+        lblYourIp.grid(row = 5, column = 1, padx = 5, pady = 5, sticky=tk.E)
         
 
         # Text fields
@@ -87,20 +93,29 @@ class MinecraftFrame(ttk.Frame):
         fldMsg.insert(tk.END, 'Hi')
         fldMsg.grid(row = 3, column = 2)
 
+        # Player position
+        self.varPlayerPos = tk.StringVar()
+        fldPlayerPos = tk.Label(mcFrame, bg='lemon chiffon', fg='black', width=20, textvariable=self.varPlayerPos)
+        fldPlayerPos.grid(row = 4, column = 2, sticky=tk.W)
+
         # Local IP Address
         self.varYourIp = tk.StringVar()
-        fldYourIp = tk.Label(mcFrame, textvariable=self.varYourIp)
+        fldYourIp = tk.Label(mcFrame, bg='lemon chiffon', fg='black', width=20, textvariable=self.varYourIp)
         self.varYourIp.set(localIpAddr)
-        fldYourIp.grid(row = 4, column = 2, sticky=tk.W)
+        fldYourIp.grid(row = 5, column = 2, sticky=tk.W)
 
 
         # Buttons
         # Chat button
-        btnPostToChat = tk.Button(mcFrame, text='Send', command=self.mcchat)
+        btnPostToChat = tk.Button(mcFrame, width=8, text='Send', command=self.mcChat)
         btnPostToChat.grid(row = 3, column = 4, padx = 5, pady = 5)
 
+        # Player Position button
+        btnPlayerPos = tk.Button(mcFrame, width=8, text='Get Position', command=self.mcPlayerPos)
+        btnPlayerPos.grid(row = 4, column = 4, padx = 5, pady = 5)
+
         
-    def mcchat(self):
+    def mcChat(self):
         try:
             mc = minecraft.Minecraft.create(self.varIpAddr.get())
             mc.postToChat(self.varSender.get() + ' > ' + self.varMsg.get())
@@ -109,14 +124,24 @@ class MinecraftFrame(ttk.Frame):
             print e
             self.statusbar.set('%s', e)
 
+    def mcPlayerPos(self):
+        try:
+            mc = minecraft.Minecraft.create(self.varIpAddr.get())
+            pos = mc.player.getTilePos()
+            self.varPlayerPos.set('x=' + str(pos.x) + ', y=' + str(pos.y) + ', z=' + str(pos.z))
+            self.statusbar.set('%s', 'Retrieved position')
+        except Exception, e:
+            print e
+            self.statusbar.set('%s', e)
+
 class StatusBar(tk.Frame):
     def __init__(self, master):
         tk.Frame.__init__(self, master)
-        self.label = tk.Label(self, bd=1, relief=tk.SUNKEN, anchor=tk.W)
+        self.label = tk.Label(self, bd=1, anchor=tk.W, bg='light cyan')
         self.label.pack(fill=tk.X)
 
     def set(self, format, *args):
-        self.label.config(text=format % args)
+        self.label.config(width=20,text=format % args)
         self.label.update_idletasks()
 
     def clear(self):
